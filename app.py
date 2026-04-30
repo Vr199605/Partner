@@ -1,123 +1,167 @@
-import streamlit as st
+# =============================================================================
+# 🚀 ASSERTIF CORRETORA - DASHBOARD HIGH-CONTRAST (FOCO EM LEITURA)
+# =============================================================================
+
 import pandas as pd
+import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+from IPython.display import display, HTML
+import warnings
 
-# 1. CONFIGURAÇÃO DA PÁGINA (DESIGN EXECUTIVO)
-st.set_page_config(page_title="ASSERTIF - Dashboard 2026", layout="wide")
+# Silenciar avisos irrelevantes
+warnings.filterwarnings('ignore')
 
-# Estilização para leitura clara e cartões modernos
-st.markdown("""
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
-    html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
-    .main { background-color: #F4F7F9; }
-    .stMetric { background-color: #ffffff; padding: 20px; border-radius: 12px; border: 1px solid #E0E6ED; }
-    h1, h2, h3 { color: #102A43; }
-    </style>
-    """, unsafe_allow_html=True)
+# -----------------------------------------------------------------------------
+# 🎨 DEFINIÇÃO DE ESTILO E CORES (Enterprise Clean)
+# -----------------------------------------------------------------------------
+STYLE = {
+    'bg_card': '#FFFFFF',
+    'text_main': '#1A1A1B',
+    'text_sub': '#4A4A4A',
+    'accent_blue': '#0056b3',
+    'accent_green': '#198754',
+    'accent_red': '#d00000',
+    'border_light': '#E0E0E0',
+    'font_family': 'Segoe UI, Helvetica, Arial, sans-serif'
+}
 
-# 2. FUNÇÃO INTELIGENTE DE LEITURA
-@st.cache_data
-def process_workbook(file):
-    xls = pd.ExcelFile(file)
-    sheets = {name: pd.read_excel(xls, name) for name in xls.sheet_names}
-    
-    # Função para buscar valores específicos por texto (IA-Like Search)
-    def get_val(df, label):
-        mask = df.astype(str).apply(lambda x: x.str.contains(label, case=False, na=False)).any(axis=1)
-        if mask.any():
-            row = df[mask].iloc[0]
-            # Pegamos o último valor numérico da linha (Geralmente o YTD/Total)
-            nums = row[pd.to_numeric(row, errors='coerce').notnull()]
-            return nums.iloc[-1] if not nums.empty else 0
-        return 0
+def formatar_moeda(valor):
+    """Formata valores numéricos para o padrão monetário brasileiro."""
+    if pd.isna(valor) or valor == 0: return "R$ 0,00"
+    return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
-    # Captura automática dos valores da Seção 8
-    dre = sheets.get('DRE 2026', pd.DataFrame())
-    resumo = sheets.get('RESUMO DRE', pd.DataFrame())
-    
-    financeiro = {
-        "globus": get_val(dre, "Valor devido para a Globus – D.A"),
-        "maldivas": get_val(dre, "Sócio Maldivas"),
-        "trimestral": get_val(resumo, "Resultado Trimestral – Valor a Receber")
-    }
-    return sheets, financeiro
+# -----------------------------------------------------------------------------
+# 🏗️ ESTRUTURA CSS PARA O LAYOUT (Injetado no Notebook)
+# -----------------------------------------------------------------------------
+css_estilo = f"""
+<style>
+    body {{ font-family: {STYLE['font_family']}; background-color: #F8F9FA; }}
+    .dashboard-wrapper {{ padding: 20px; background: white; }}
+    .kpi-container {{
+        display: flex; flex-wrap: wrap; justify-content: space-between; gap: 15px; margin: 20px 0;
+    }}
+    .kpi-card {{
+        background: white; border: 1px solid {STYLE['border_light']}; border-radius: 8px;
+        padding: 20px; flex: 1; min-width: 200px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        text-align: left; border-top: 5px solid {STYLE['accent_blue']};
+    }}
+    .kpi-title {{ color: {STYLE['text_sub']}; font-size: 0.85rem; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }}
+    .kpi-value {{ color: {STYLE['text_main']}; font-size: 1.8rem; font-weight: 800; margin: 5px 0; }}
+    .section-header {{
+        background: #f1f3f5; padding: 12px 15px; border-radius: 4px; 
+        color: {STYLE['text_main']}; font-weight: bold; border-left: 6px solid {STYLE['accent_blue']};
+        margin-top: 30px; margin-bottom: 15px; font-size: 1.1rem;
+    }}
+</style>
+"""
+display(HTML(css_estilo))
 
-# 3. INTERFACE E UPLOAD
-st.title("📊 Relatório Executivo ASSERTIF 2026")
-st.markdown("Análise consolidada de performance, receitas e distribuição societária.")
+# -----------------------------------------------------------------------------
+# 💎 CABEÇALHO E INDICADORES (KPIs)
+# -----------------------------------------------------------------------------
+display(HTML(f"""
+<div style="text-align: center; padding: 20px; border-bottom: 2px solid #EEE; background: white;">
+    <h1 style="color: {STYLE['text_main']}; margin: 0;">📊 Relatório Executivo Assertif</h1>
+    <p style="color: {STYLE['text_sub']}; font-size: 1.1rem;">Consolidado Financeiro | Gestão de Dados 2026</p>
+</div>
+"""))
 
-uploaded_file = st.sidebar.file_uploader("Upload da Planilha 2026", type="xlsx")
+# Simulação de valores para exibição imediata
+# (Substitua por suas variáveis de faturamento reais)
+kpis_html = f"""
+<div class="kpi-container">
+    <div class="kpi-card">
+        <div class="kpi-title">Faturamento Acumulado (YTD)</div>
+        <div class="kpi-value">{formatar_moeda(178072.00)}</div>
+        <div style="color: {STYLE['accent_green']}; font-weight: bold;">↑ Receita Consolidada</div>
+    </div>
+    <div class="kpi-card" style="border-top-color: {STYLE['accent_green']};">
+        <div class="kpi-title">Resultado Líquido</div>
+        <div class="kpi-value" style="color: {STYLE['accent_green']};">{formatar_moeda(29490.00)}</div>
+        <div style="color: {STYLE['text_sub']}; font-weight: bold;">Margem Líquida: 16.5%</div>
+    </div>
+    <div class="kpi-card" style="border-top-color: #6f42c1;">
+        <div class="kpi-title">Ponto de Equilíbrio</div>
+        <div class="kpi-value">{formatar_moeda(148582.00)}</div>
+        <div style="color: {STYLE['text_sub']};">Cobertura de Custos Fixos</div>
+    </div>
+</div>
+"""
+display(HTML(kpis_html))
 
-if uploaded_file:
-    data, fin = process_workbook(uploaded_file)
-    
-    # --- 1º 💰 INDICADORES PRINCIPAIS (KPIs) YTD ---
-    st.header("1º 💰 INDICADORES PRINCIPAIS (KPIs) YTD")
-    k1, k2, k3, k4 = st.columns(4)
-    # Valores dinâmicos podem ser extraídos aqui
-    k1.metric("Receita Bruta YTD", "R$ 1.150.400", "Meta: 92%")
-    k2.metric("Resultado Líquido", "R$ 482.300", "41.9%")
-    k3.metric("Margem Operacional", "38.5%", "-2.1%")
-    k4.metric("Nº de Negócios", "142", "+12")
+# -----------------------------------------------------------------------------
+# 📈 VISUALIZAÇÃO GRÁFICA (Plotly High-Contrast)
+# -----------------------------------------------------------------------------
+display(HTML('<div class="section-header">ANÁLISE DE EVOLUÇÃO MENSAL</div>'))
 
-    # --- 2º 📈 EVOLUÇÃO MENSAL ---
-    st.header("2º 📈 EVOLUÇÃO MENSAL - RECEITA vs RESULTADO")
-    # Exemplo com dados da DRE (ajuste os índices conforme sua DRE)
-    fig_evol = go.Figure()
-    meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun']
-    fig_evol.add_trace(go.Bar(x=meses, y=[120000, 145000, 138000, 160000], name="Receita", marker_color='#243B55'))
-    fig_evol.add_trace(go.Scatter(x=meses, y=[45000, 58000, 52000, 71000], name="Resultado", line=dict(color='#F4A261', width=4)))
-    st.plotly_chart(fig_evol, use_container_width=True)
+# Dados de exemplo para o gráfico
+meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril']
+receita = [42263, 49513, 71946, 14350]
+lucro = [5133, 7667, 16690, 2400]
 
-    # --- 3º 🤝 DISTRIBUIÇÃO DE RESULTADOS - SÓCIOS ---
-    st.header("3º 🤝 DISTRIBUIÇÃO DE RESULTADOS - SÓCIOS")
-    fig_pie = px.pie(names=['Maldivas', 'Outros Sócios'], values=[fin['maldivas'], 100000], hole=0.5, color_discrete_sequence=['#102A43', '#E0E6ED'])
-    st.plotly_chart(fig_pie)
+fig = make_subplots(rows=1, cols=2, subplot_titles=("Receita Bruta", "Lucro Líquido"), horizontal_spacing=0.12)
 
-    # --- 4º 🏆 RANKING - MAIORES COMISSÕES POR SEGURADORA ---
-    st.header("4º 🏆 RANKING - MAIORES COMISSÕES POR SEGURADORA")
-    extrato = data.get('EXTRATO PORTAL MAAS', pd.DataFrame())
-    if not extrato.empty:
-        rank = extrato.groupby('Seguradora')['Comissão (%)'].sum().nlargest(10).reset_index()
-        # CORREÇÃO DO ERRO ANTERIOR: 'color' em vez de 'color_value'
-        fig_rank = px.bar(rank, x='Comissão (%)', y='Seguradora', orientation='h', color='Comissão (%)', color_continuous_scale='Blues')
-        st.plotly_chart(fig_rank, use_container_width=True)
+# Gráfico de Barras - Receita
+fig.add_trace(go.Bar(
+    x=meses, y=receita, name="Receita",
+    marker_color=STYLE['accent_blue'],
+    text=[f"R$ {v/1000:.1f}k" for v in receita], textposition='auto',
+), row=1, col=1)
 
-    # --- 5º 📦 ANÁLISE POR TIPO DE PRODUTO ---
-    st.header("5º 📦 ANÁLISE POR TIPO DE PRODUTO")
-    if 'Produto' in extrato.columns:
-        fig_prod = px.treemap(extrato, path=['Produto'], values='Comissão (%)', color_discrete_sequence=px.colors.qualitative.Prism)
-        st.plotly_chart(fig_prod, use_container_width=True)
+# Gráfico de Linha - Lucro
+fig.add_trace(go.Scatter(
+    x=meses, y=lucro, name="Lucro",
+    mode='lines+markers+text', 
+    line=dict(color=STYLE['accent_green'], width=4),
+    marker=dict(size=10, symbol='diamond'),
+    text=[f"R$ {v/1000:.1f}k" for v in lucro], textposition='top center'
+), row=1, col=2)
 
-    # --- 6º 👥 RANKING - TOP ORIGINADORES ---
-    st.header("6º 👥 RANKING - TOP ORIGINADORES")
-    direto = data.get('ASSERTIF DIRETO', pd.DataFrame())
-    if not direto.empty:
-        top_orig = direto.groupby('ORIGINADOR').size().reset_index(name='Qtd').nlargest(10, 'Qtd')
-        st.dataframe(top_orig, use_container_width=True)
+fig.update_layout(
+    height=450, plot_bgcolor='white', paper_bgcolor='white',
+    font=dict(family=STYLE['font_family'], size=13, color=STYLE['text_main']),
+    margin=dict(l=40, r=40, t=60, b=40), showlegend=False
+)
 
-    # --- 7º 💸 RANKING - MAIORES DESPESAS ---
-    st.header("7º 💸 RANKING - MAIORES DESPESAS")
-    desp = data.get('DESPESAS', pd.DataFrame())
-    if not desp.empty:
-        # Pega as top 7 despesas pela coluna de valor (ajustado para a coluna 4 conforme o Excel)
-        fig_desp = px.bar(desp.nlargest(7, desp.columns[4]), x=desp.columns[4], y=desp.columns[3], orientation='h', marker_color='#BC4749')
-        st.plotly_chart(fig_desp, use_container_width=True)
+# Estilização dos eixos para clareza
+fig.update_xaxes(showline=True, linewidth=1, linecolor='#CCC', gridcolor='#F2F2F2')
+fig.update_yaxes(showline=True, linewidth=1, linecolor='#CCC', gridcolor='#F2F2F2')
 
-    # --- 8º 📋 RESUMO EXECUTIVO - YTD 2026 ---
-    st.header("8º 📋 RESUMO EXECUTIVO - YTD 2026")
-    st.markdown("### 🔍 Detalhamento de Saldos e Repasses")
-    c1, c2, c3 = st.columns(3)
-    
-    with c1:
-        st.metric("Devido Globus (D.A)", f"R$ {fin['globus']:,.2f}")
-    with c2:
-        st.metric("Pagar Maldivas", f"R$ {fin['maldivas']:,.2f}")
-    with c3:
-        st.metric("Resultado Trimestral Maldivas", f"R$ {fin['trimestral']:,.2f}")
+fig.show()
 
-    st.success("Dashboard atualizado com sucesso com base nas abas: " + ", ".join(data.keys()))
-else:
-    st.info("Aguardando upload do arquivo Excel para processar os dados...")
+# -----------------------------------------------------------------------------
+# 📋 TABELA FINANCEIRA (Detalhamento)
+# -----------------------------------------------------------------------------
+display(HTML('<div class="section-header">DEMONSTRATIVO DE RESULTADOS SINTÉTICO</div>'))
+
+tabela_html = f"""
+<table style="width:100%; border-collapse: collapse; font-family: {STYLE['font_family']}; background: white; margin-bottom: 50px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+    <thead>
+        <tr style="background: {STYLE['text_main']}; color: white; text-align: left;">
+            <th style="padding: 15px; border: 1px solid #ddd;">GRUPO DE CONTA</th>
+            <th style="padding: 15px; border: 1px solid #ddd; text-align: right;">VALOR ACUMULADO</th>
+            <th style="padding: 15px; border: 1px solid #ddd; text-align: center;">% SOBRE RECEITA</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr style="background: #FDFDFD;">
+            <td style="padding: 12px; border: 1px solid #ddd; font-weight: bold;">(+) FATURAMENTO BRUTO</td>
+            <td style="padding: 12px; border: 1px solid #ddd; text-align: right; font-weight: bold;">{formatar_moeda(178072)}</td>
+            <td style="padding: 12px; border: 1px solid #ddd; text-align: center;">100%</td>
+        </tr>
+        <tr>
+            <td style="padding: 12px; border: 1px solid #ddd; color: {STYLE['accent_red']};">(-) Custos Operacionais / Variáveis</td>
+            <td style="padding: 12px; border: 1px solid #ddd; text-align: right; color: {STYLE['accent_red']};">({formatar_moeda(117592)})</td>
+            <td style="padding: 12px; border: 1px solid #ddd; text-align: center;">-66.0%</td>
+        </tr>
+        <tr style="background: #F1F8E9;">
+            <td style="padding: 15px; border: 1px solid #ddd; font-weight: bold; font-size: 1.1rem; color: {STYLE['accent_green']};">(=) MARGEM LÍQUIDA FINAL</td>
+            <td style="padding: 15px; border: 1px solid #ddd; text-align: right; font-weight: bold; font-size: 1.1rem; color: {STYLE['accent_green']};">{formatar_moeda(29490)}</td>
+            <td style="padding: 15px; border: 1px solid #ddd; text-align: center; font-weight: bold; color: {STYLE['accent_green']};">16.5%</td>
+        </tr>
+    </tbody>
+</table>
+"""
+display(HTML(tabela_html))
